@@ -1,0 +1,34 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data files (too large for git)
+data/*.csv
+data/*.zip
+data_cleaned/*.csv
+
+# Secrets
+.env
+
+# Node (OpenClaw)
+node_modules/
+openclaw/.openclaw/
+
+# Logs
+openclaw/logs/*.log
+
+# Generated charts
+/tmp/*.png
+openclaw/charts/
+
+# ChromaDB vector store (local data, not committed)
+chroma_db/
+
+.claude/

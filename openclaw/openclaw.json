@@ -1,0 +1,70 @@
+{
+  "llm": {
+    "provider": "groq",
+    "model": "llama-3.3-70b-versatile",
+    "apiKey": "${GROQ_API_KEY}",
+    "maxTokens": 4096
+  },
+
+  "soul": "./SOUL.md",
+
+  "channels": {
+    "telegram": {
+      "token": "${TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["${TELEGRAM_ALLOWED_USER_ID}"],
+      "parseMode": "Markdown"
+    }
+  },
+
+  "skills": [
+    {
+      "name": "postgresql",
+      "source": "clawhub:postgresql",
+      "config": {
+        "connectionString": "${READONLY_DB_URL}"
+      }
+    },
+    {
+      "name": "query_validator",
+      "source": "./skills/query_validator.js"
+    },
+    {
+      "name": "send_chart",
+      "source": "./skills/send_chart.js",
+      "config": {
+        "pythonPath": "${PYTHON_PATH}",
+        "chartScript": "./skills/chart_generator.py"
+      }
+    },
+    {
+      "name": "knowledge_search",
+      "source": "./skills/knowledge_search.js",
+      "config": {
+        "pythonPath": "${PYTHON_PATH}",
+        "cohereApiKey": "${COHERE_API_KEY}"
+      }
+    }
+  ],
+
+  "heartbeat": {
+    "enabled": true,
+    "schedule": "0 8 * * *",
+    "timezone": "Asia/Bangkok",
+    "task": "Generate and send the daily sales summary report to the Telegram channel. Query the database for: total orders by status, top 5 product categories by revenue, payment method breakdown, average review score, and on-time delivery rate. Format it as the daily report described in your instructions."
+  },
+
+  "gateway": {
+    "host": "127.0.0.1",
+    "port": 3000
+  },
+
+  "memory": {
+    "dir": "./memory"
+  },
+
+  "logging": {
+    "level": "info",
+    "file": "./logs/openclaw.log"
+  }
+}

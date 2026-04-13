@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[oc]
+.venv/
+*.egg-info/
+
+# Data files (mounted as volumes at runtime — not baked into the image)
+data/
+data_cleaned/
+openclaw/charts/
+openclaw/logs/
+
+# Secrets
+.env
+
+# Node
+node_modules/
+skillhub/frontend/node_modules/
+
+# Frontend build output (built inside Docker, not from host)
+skillhub/frontend/dist/
+
+# Power BI / misc
+*.pbix
+*.pbit
+*.pdf

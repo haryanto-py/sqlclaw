@@ -1,0 +1,96 @@
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  # Runs the schema DDL and read-only user setup automatically on first start
+  # via docker-entrypoint-initdb.d (only runs when the data volume is empty).
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       olist_ecommerce
+      POSTGRES_USER:     ${POSTGRES_USER:-olist_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./sql/create_readonly_user.sql:/docker-entrypoint-initdb.d/02_readonly_user.sql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-olist_admin} -d olist_ecommerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+
+  # ── ETL pipeline ──────────────────────────────────────────────────────────
+  # One-shot service. Cleans the raw CSVs and loads them into PostgreSQL.
+  #
+  # Run once after first bringing up postgres:
+  #   docker compose --profile init run --rm etl
+  #
+  # To reload from scratch (truncates all tables):
+  #   docker compose --profile init run --rm etl python main.py --reload
+  etl:
+    build:
+      context: .
+      target: etl
+    env_file: .env
+    environment:
+      # Override DATABASE_URL to use the Docker service name, not localhost
+      DATABASE_URL: >-
+        postgresql://${POSTGRES_USER:-olist_admin}:${POSTGRES_PASSWORD}@postgres:5432/olist_ecommerce
+    volumes:
+      - ./data:/app/data
+      - ./data_cleaned:/app/data_cleaned
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["init"]
+    restart: "no"
+
+
+  # ── Skillhub dashboard ────────────────────────────────────────────────────
+  # FastAPI backend + pre-built React frontend.
+  # Open http://localhost:8000 after starting.
+  skillhub:
+    build:
+      context: .
+      target: skillhub
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: >-
+        postgresql://${POSTGRES_USER:-olist_admin}:${POSTGRES_PASSWORD}@postgres:5432/olist_ecommerce
+      READONLY_DB_URL: >-
+        postgresql://olist_reader:${READONLY_DB_PASSWORD:-change_me_before_use}@postgres:5432/olist_ecommerce
+    ports:
+      - "${SKILLHUB_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  # ── OpenClaw agent ────────────────────────────────────────────────────────
+  # The Telegram-connected AI agent. Requires ANTHROPIC_API_KEY and
+  # TELEGRAM_BOT_TOKEN to be set in .env before starting.
+  #
+  # Start with:
+  #   docker compose --profile agent up openclaw
+  openclaw:
+    build: ./openclaw
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      READONLY_DB_URL: >-
+        postgresql://olist_reader:${READONLY_DB_PASSWORD:-change_me_before_use}@postgres:5432/olist_ecommerce
+      PYTHON_PATH: /usr/local/bin/python3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["agent"]
+
+
+volumes:
+  postgres_data:
+    driver: local

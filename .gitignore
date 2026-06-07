@@ -21,12 +21,19 @@ data_cleaned/*.csv
 node_modules/
 openclaw/.openclaw/
 
+# OpenClaw project-local state (OPENCLAW_HOME) — sessions, credentials, gateway token
+/.openclaw/
+*.bak
+openclaw/openclaw.json.bak*
+
 # Logs
 openclaw/logs/*.log
 
-# Generated charts
+# Generated charts / exports / agent temp data
 /tmp/*.png
 openclaw/charts/
+openclaw/exports/
+openclaw/tmp_*.json
 
 # ChromaDB vector store (local data, not committed)
 chroma_db/

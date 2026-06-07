@@ -1,14 +1,16 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Puzzle, ScrollText, ShieldCheck, Database, Activity
+  LayoutDashboard, Puzzle, ScrollText, ShieldCheck, Database, Activity, Users, Server
 } from "lucide-react";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard",  icon: LayoutDashboard },
-  { to: "/skills",    label: "Skills",      icon: Puzzle },
-  { to: "/logs",      label: "Query Logs",  icon: ScrollText },
-  { to: "/security",  label: "Security",    icon: ShieldCheck },
-  { to: "/database",  label: "Database",    icon: Database },
+  { to: "/skills",    label: "Skills",     icon: Puzzle },
+  { to: "/users",     label: "Users",      icon: Users },
+  { to: "/gateway",   label: "Gateway",    icon: Server },
+  { to: "/logs",      label: "Query Logs", icon: ScrollText },
+  { to: "/security",  label: "Security",   icon: ShieldCheck },
+  { to: "/database",  label: "Database",   icon: Database },
 ];
 
 export default function Layout({ children }) {

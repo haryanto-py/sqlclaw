@@ -22,6 +22,8 @@ async function post(path, body) {
 export const api = {
   dashboard: () => get("/dashboard/stats"),
   skills:    () => get("/skills"),
+  toggleSkill: (name, enabled, source) => post("/skills/toggle", { name, enabled, source }),
+  addSkill:    (name, description) => post("/skills/add", { name, description }),
   queryLogs: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return get(`/logs/queries${qs ? "?" + qs : ""}`);
@@ -29,4 +31,7 @@ export const api = {
   security:  () => get("/security/stats"),
   tables:    () => get("/database/tables"),
   runQuery:  (sql) => post("/database/query", { sql }),
+  users:     () => get("/users"),
+  updateUsers: (allowFrom) => post("/users", { allowFrom }),
+  gatewayStatus: () => get("/gateway/status"),
 };

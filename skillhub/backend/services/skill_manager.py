@@ -28,17 +28,16 @@ def get_skills() -> list[dict]:
     skills: list[dict] = []
 
     # Parse openclaw.json for configured skills
-    configured: list[dict] = []
+    configured: dict = {}
     if OPENCLAW_JSON.exists():
         try:
             cfg = json.loads(OPENCLAW_JSON.read_text(encoding="utf-8"))
-            configured = cfg.get("skills", [])
+            configured = cfg.get("skills", {}).get("entries", {})
         except (json.JSONDecodeError, KeyError):
             pass
 
     seen = set()
-    for skill in configured:
-        name = skill.get("name", "unknown")
+    for name, skill in configured.items():
         source = skill.get("source", "")
         seen.add(name)
 

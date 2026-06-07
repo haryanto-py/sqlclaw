@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from skillhub.backend.routers import dashboard, database, logs, security, skills
+from skillhub.backend.routers import dashboard, database, logs, security, skills, users, gateway
 
 app = FastAPI(title="Skillhub", version="1.0.0", docs_url="/api/docs")
 
@@ -31,6 +31,8 @@ app.include_router(skills.router)
 app.include_router(logs.router)
 app.include_router(security.router)
 app.include_router(database.router)
+app.include_router(users.router)
+app.include_router(gateway.router)
 
 # Serve the built React frontend in production
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"

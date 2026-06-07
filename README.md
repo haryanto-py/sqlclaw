@@ -1,45 +1,49 @@
 # OpenClaw Sales Analytics Agent
 
-> An end-to-end AI agent that lets you query a real e-commerce database in plain English via Telegram — complete with charts, daily automated reports, a security audit layer, and a management dashboard.
+> An end-to-end AI agent that lets you query a real e-commerce database in plain English via Telegram — complete with charts, forecasts, customer segmentation, PDF/CSV exports, a daily automated report, a security audit layer, and a management dashboard.
 
-Built as a portfolio project to demonstrate the full stack of a production-grade AI agent: data engineering, database design, LLM integration, backend API, and a React frontend — all wired together with Docker.
+Built as a portfolio project to demonstrate the full stack of a production-grade AI agent: data engineering, database design, LLM tool-use, a skill/plugin architecture, a backend API, and a React frontend — all wired together with Docker.
 
 ---
 
 ## What It Does
 
-You send a message to a Telegram bot. The AI agent translates your question into SQL, validates it against a security layer, runs it against a PostgreSQL database, and replies — in seconds — with a formatted answer or a chart.
+You send a message to a Telegram bot. The agent translates your question into SQL, runs it (read-only) against a PostgreSQL database through a validated skill, and replies — in seconds — with a formatted answer, a chart, or a downloadable report.
 
 **Example conversations:**
 
 > **You:** What are the top 5 product categories by revenue?
 >
-> **Agent:** Here are the top 5 categories by total revenue:
-> 1. Health & Beauty — R$ 1,258,032
-> 2. Watches & Gifts — R$ 1,205,120
+> **Agent:**
+> 1. Health & Beauty — R$ 1,441,248.07
+> 2. Watches & Gifts — R$ 1,305,541.61
+> 3. Bed, Bath & Table — R$ 1,241,681.72
 > ...
-> *(sends a bar chart)*
 
-> **You:** Show me monthly order volume for 2017 as a line chart
+> **You:** Give me a bar chart of revenue for each year
 >
-> **Agent:** *(sends a line chart with monthly trend)*
+> **Agent:** *(sends a bar chart PNG)*
 
-> **You:** What percentage of orders were delivered late?
+> **You:** Export the top 10 categories as a PDF
 >
-> **Agent:** 8.1% of delivered orders (8,009 of 96,478) arrived after the estimated delivery date.
+> **Agent:** *(sends a formatted PDF document)*
 
-Every morning at 8:00 AM, the agent automatically sends a daily sales summary without being asked.
+> **You:** What is GMV and how is it calculated?
+>
+> **Agent:** *(answers from the knowledge base — GMV = SUM(price + freight_value)…)*
+
+Every 24 hours the agent automatically sends a daily sales summary without being asked.
 
 ---
 
 ## Why This Project
 
-Most AI agent demos use toy datasets and fake APIs. This project is different:
+Most AI agent demos use toy datasets and fake APIs. This one is different:
 
-- **Real dataset** — 100,000 actual e-commerce orders from Olist (2016–2018), with all the quality issues real data has: missing values, encoding inconsistencies, duplicate keys, unmapped foreign keys, zip codes that lose their leading zeros
-- **Real data pipeline** — a multi-step ETL process that cleans and loads 9 related tables with proper FK constraints
-- **Real security** — two independent layers prevent the LLM from ever writing to or damaging the database
-- **Real observability** — every query the agent runs is logged, auditable, and visible in a dashboard
+- **Real dataset** — 100,000 actual e-commerce orders from Olist (2016–2018), with all the quality issues real data has: missing values, encoding inconsistencies, duplicate keys, unmapped foreign keys, zip codes that lose their leading zeros.
+- **Real data pipeline** — a multi-step ETL process that cleans and loads 9 related tables with proper FK constraints.
+- **Real security** — two independent layers prevent the LLM from ever writing to or damaging the database.
+- **Real observability** — every query the agent runs is logged, auditable, and visible in a dashboard.
 
 ---
 
@@ -49,60 +53,64 @@ Most AI agent demos use toy datasets and fake APIs. This project is different:
 You (Telegram)
       │
       ▼
- OpenClaw Agent  ◄──  SOUL.md  (schema + SQL rules + personality)
+ OpenClaw Gateway  ── systemPromptOverride: persona + schema + skill commands
+      │             (editable source: openclaw/system_prompt.txt)
       │
-      ├─ query_validator.js  ←  blocks any write query, logs all attempts
-      │
-      ├─ postgresql skill    ←  connects as read-only olist_reader user
-      │
-      └─ send_chart.js       ←  generates PNG charts via Python/matplotlib
-             │
-             ▼
-      chart_generator.py  →  bar / line / pie / heatmap
+      ▼  the model uses its exec tool to run a skill's script:
+ openclaw/skills/<name>/
+   ├── SKILL.md            # manifest: name, description, when-to-use, command
+   └── scripts/*.py        # the executable backend
 
-PostgreSQL (olist_ecommerce)
-  └─ 9 tables, ~430K rows total
+ Skills:
+   • postgresql      → query.py    : validates (SELECT-only) + logs + runs read-only SQL
+   • knowledge_search→ search.py   : semantic search over a ChromaDB knowledge base (RAG)
+   • send_chart      → chart.py    : bar / line / pie / heatmap PNGs (matplotlib)
+   • forecast        → forecast.py : linear-trend projection + chart
+   • rfm_segmentation→ rfm.py      : Recency/Frequency/Monetary customer segments
+   • export_report   → export.py   : PDF / CSV exports
 
-Skillhub Dashboard (localhost:8000)
-  ├─ Dashboard   — live stats, DB row counts, log stream
-  ├─ Skills      — registered skill registry
-  ├─ Query Logs  — searchable audit trail (ALLOWED / BLOCKED)
-  ├─ Security    — blocked query analytics
-  └─ Database    — table browser + interactive SQL runner
+PostgreSQL (olist_ecommerce)          Skillhub Dashboard (localhost:8000)
+  └─ 9 tables, ~430K rows               ├─ Dashboard   — live stats, DB health
+                                        ├─ Skills      — skill registry
+                                        ├─ Query Logs  — audit trail (ALLOWED/BLOCKED)
+                                        ├─ Security    — blocked-query analytics
+                                        ├─ Database    — table browser + SQL runner
+                                        ├─ Gateway     — agent gateway status
+                                        └─ Users       — Telegram allowlist
 ```
+
+Skills follow OpenClaw's **Agent Skills** model: each is a folder with a `SKILL.md` manifest plus a Python backend. The model reads the manifest, then invokes the script through its `exec` tool and sends results (text, images, files) back over Telegram.
 
 ---
 
 ## Technical Highlights
 
 ### Data Engineering
-- **ETL pipeline** (`main.py`) with modular steps: download → clean → schema → load → create-user
-- **9-table schema** with proper FK constraints, composite PKs, and 15 indexes
-- Handles real data issues: deduplication (1M geolocation rows → 19K unique zip codes), type coercion, unmapped foreign keys, encoding problems
-- Idempotent loader with `--reload` flag for safe re-runs
+- **ETL pipeline** (`main.py`) with modular steps: download → clean → schema → load → create-user → embed.
+- **9-table schema** with proper FK constraints, composite PKs, and indexes.
+- Handles real data issues: deduplication (1M geolocation rows → 19K unique zip codes), type coercion, unmapped foreign keys, encoding problems.
+- Idempotent loader with `--reload` flag for safe re-runs.
 
 ### AI Agent
-- Powered by **Claude (Anthropic)** via the OpenClaw framework
-- Agent "knows" the full database schema through `SOUL.md` — a structured context file that describes every table, key JOINs, and strict SQL rules
-- **ReAct reasoning loop**: the agent plans, validates, queries, and responds in a single turn
+- Built on the **OpenClaw** agent framework with a **model-agnostic** LLM layer — currently runs `openai/gpt-4o-mini`; swapping to Claude or any other provider is a one-line change in `openclaw/openclaw.json`.
+- The agent's persona, the full database schema, the exact skill commands, and the response-formatting rules are supplied through a single system prompt (`openclaw/system_prompt.txt`), so even a small/fast model reliably routes work through the skills.
+- **Retrieval-augmented** business context via a local ChromaDB knowledge base (`knowledge_search` skill).
 
 ### Security (Defense-in-Depth)
 Two independent layers, either of which alone would prevent writes:
 
-1. **`query_validator.js`** — intercepts every query before execution. Blocks `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, and more via regex. Logs every attempt with timestamp, status, and reason.
+1. **Query validator** (in `skills/postgresql/scripts/query.py`) — every query is checked before execution: only a single `SELECT`/`WITH` statement is allowed; `INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/…` and stacked statements are rejected; the connection is opened read-only. Every attempt is logged with timestamp, status, and reason.
 2. **Read-only PostgreSQL user** — `olist_reader` has only `SELECT` privilege. Even if the validator were bypassed, the database rejects writes at the connection level.
 
 ### Skillhub Dashboard
-- **FastAPI** backend with 5 routers: dashboard stats, query logs, security analytics, skill registry, database explorer
-- **React + Tailwind CSS** frontend (Vite)
-- **WebSocket** live log streaming — watch the agent's reasoning in real time
-- Interactive SQL runner with SELECT-only enforcement
+- **FastAPI** backend (dashboard stats, query logs, security analytics, skill registry, database explorer, gateway status, user allowlist).
+- **React + Tailwind CSS** frontend (Vite), with **WebSocket** live log streaming.
+- Interactive SQL runner with SELECT-only enforcement.
 
 ### DevOps & Testing
-- **Multi-stage Dockerfile** — Node.js frontend build → Python base → separate `etl` and `skillhub` targets
-- **Docker Compose** with profiles: `init` for one-shot ETL, `agent` for OpenClaw, always-on postgres + skillhub
-- **50 automated tests** — 27 unit tests (data cleaning logic) + 23 integration tests (all API endpoints)
-- **GitHub Actions CI** — lint → unit tests → integration tests → Docker build on every push
+- **Multi-stage Dockerfile** and **Docker Compose** (PostgreSQL, one-shot ETL, always-on Skillhub).
+- **GitHub Actions CI** — lint (ruff) → unit tests → integration tests → Docker build.
+- **pytest** suite covering the ETL cleaning logic and the dashboard API.
 
 ---
 
@@ -112,112 +120,106 @@ Two independent layers, either of which alone would prevent writes:
 |---|---|
 | Dataset | Olist Brazilian E-Commerce (100K orders, Kaggle) |
 | ETL | Python 3.12, pandas, SQLAlchemy, psycopg2 |
-| Database | PostgreSQL 17 |
-| AI Agent | OpenClaw + Claude (claude-opus-4-6) |
+| Database | PostgreSQL |
+| AI Agent | OpenClaw (model-agnostic; default `openai/gpt-4o-mini`) |
 | Messaging | Telegram Bot API |
-| Charts | matplotlib, seaborn |
-| API | FastAPI, uvicorn |
+| Skills | Python (matplotlib, seaborn, scikit-learn, fpdf2), ChromaDB + sentence-transformers (RAG) |
+| API | FastAPI, uvicorn, websockets |
 | Frontend | React 18, Vite, Tailwind CSS, Recharts |
-| Packaging | UV (Python), npm |
+| Packaging | uv (Python) |
 | Containers | Docker, Docker Compose |
-| CI | GitHub Actions |
-| Testing | pytest, httpx |
-| Linting | ruff |
+| CI / Lint / Test | GitHub Actions, ruff, pytest |
 
 ---
 
 ## Project Structure
 
 ```
-sales-rag/
-├── main.py                        # ETL pipeline entry point (argparse)
-├── pyproject.toml                 # Python deps + ruff + pytest config
+sqlclaw/
+├── main.py                          # ETL pipeline entry point (argparse)
+├── pyproject.toml                   # Python deps + ruff + pytest config
+├── start.ps1                        # Launch the agent with project-local config (Windows)
 │
-├── utils/
-│   ├── clean_data.py              # 9 per-table cleaning functions
-│   ├── db.py                      # SQLAlchemy engine factory
-│   ├── load_data.py               # FK-ordered PostgreSQL loader
-│   └── fetch_dataset.py           # Kaggle download helper
+├── utils/                           # ETL helpers
+│   ├── clean_data.py                #   per-table cleaning functions
+│   ├── db.py                        #   SQLAlchemy engine factory
+│   ├── load_data.py                 #   FK-ordered PostgreSQL loader
+│   ├── fetch_dataset.py             #   Kaggle download helper
+│   └── embed_knowledge.py           #   KNOWLEDGE.md → ChromaDB embeddings
 │
-├── sql/
-│   ├── schema.sql                 # DDL: 9 tables, FKs, 15 indexes
-│   ├── create_readonly_user.sql   # olist_reader role setup
-│   └── drop_all.sql               # Clean-slate tear-down
+├── sql/                             # schema.sql, create_readonly_user.sql, drop_all.sql
 │
 ├── openclaw/
-│   ├── SOUL.md                    # Agent context: schema + rules + personality
-│   ├── openclaw.json              # Config: LLM, Telegram, skills, heartbeat
+│   ├── openclaw.json                # Agent config: model, Telegram, skills, heartbeat
+│   ├── system_prompt.txt            # Editable source of the agent's system prompt
+│   ├── SOUL.md / KNOWLEDGE.md       # Schema reference + curated knowledge base
 │   └── skills/
-│       ├── query_validator.js     # SQL safety layer + audit logger
-│       ├── chart_generator.py     # matplotlib chart renderer
-│       └── send_chart.js          # JS wrapper → Python chart generator
+│       ├── postgresql/              #   SKILL.md + scripts/query.py
+│       ├── knowledge_search/        #   SKILL.md + scripts/search.py
+│       ├── send_chart/              #   SKILL.md + scripts/chart.py
+│       ├── forecast/                #   SKILL.md + scripts/forecast.py
+│       ├── rfm_segmentation/        #   SKILL.md + scripts/rfm.py
+│       └── export_report/           #   SKILL.md + scripts/export.py
 │
 ├── skillhub/
-│   ├── backend/                   # FastAPI app (routers + services)
-│   └── frontend/                  # React + Tailwind (Vite)
+│   ├── backend/                     # FastAPI app (routers + services)
+│   └── frontend/                    # React + Tailwind (Vite)
 │
-├── tests/
-│   ├── unit/test_clean_data.py    # 27 tests for ETL cleaning logic
-│   └── integration/test_api.py   # 23 tests for all API endpoints
-│
-├── Dockerfile                     # Multi-stage build
-├── docker-compose.yml             # Full stack deployment
-└── .github/workflows/ci.yml       # GitHub Actions pipeline
+├── tests/                           # pytest: ETL cleaning + API
+├── Dockerfile                       # Multi-stage build
+├── docker-compose.yml               # Stack deployment
+└── .github/workflows/ci.yml         # GitHub Actions pipeline
 ```
 
 ---
 
 ## Getting Started
 
-### Option A — Docker (recommended)
+### 1. Data + database (Docker, recommended)
 
 ```bash
-# 1. Copy and fill in environment variables
-cp .env.example .env
+cp .env.example .env                       # fill in your values
 
-# 2. Place the 9 Olist CSVs into ./data/
-#    Download from: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+# Place the 9 Olist CSVs into ./data/
+#   https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
 
-# 3. Start PostgreSQL + Skillhub dashboard
-docker compose up -d
-
-# 4. Run ETL (first time only, ~2 minutes)
-docker compose --profile init run --rm etl
-
-# 5. Open the dashboard
-# http://localhost:8000
-
-# 6. Start the agent (requires Telegram + Anthropic keys in .env)
-docker compose --profile agent up -d openclaw
+docker compose up -d                       # PostgreSQL + Skillhub dashboard
+docker compose --profile init run --rm etl # one-time ETL (~2 min)
+# Dashboard → http://localhost:8000
 ```
 
-### Option B — Local
+Or locally:
 
 ```bash
-git clone <your-repo-url>
-cd sales-rag
-
-# Install Python deps
 uv sync
-
-# Configure .env (see .env.example)
-cp .env.example .env
-
-# Create the database and run ETL
 createdb olist_ecommerce
 python main.py --step schema
-# Place CSVs in ./data/, then:
-python main.py
-python main.py --step create-user
-
-# Start the dashboard
-uvicorn skillhub.backend.main:app --reload
-
-# Install and start the agent
-npm install -g openclaw
-cd openclaw && npx clawhub@latest install postgresql
-openclaw start openclaw.json
+python main.py                             # clean + load
+python main.py --step create-user          # olist_reader role
+python main.py --step embed                 # build the knowledge base
+uvicorn skillhub.backend.main:app --reload  # dashboard
 ```
+
+### 2. The Telegram agent
+
+The agent is launched locally so its config and state stay **scoped to this project** (it never touches a global `~/.openclaw` config or clashes with other OpenClaw projects):
+
+```bash
+npm install -g openclaw     # install the OpenClaw CLI (one time)
+
+# Windows — start.ps1 loads .env and sets the project-local config + state dir,
+# then runs the gateway:
+./start.ps1
+```
+
+`start.ps1` sets `OPENCLAW_HOME` (project root → state in `./.openclaw/`) and
+`OPENCLAW_CONFIG_PATH` (the repo's `openclaw/openclaw.json`), then runs
+`openclaw gateway run`. Keep the terminal open — the bot only responds while the
+gateway is running. Message your bot and you're live.
+
+> Required env: `OPENAI_API_KEY` (or your chosen provider), `TELEGRAM_BOT_TOKEN`,
+> `TELEGRAM_ALLOWED_USER_ID` (your numeric Telegram user id — DM [@userinfobot](https://t.me/userinfobot) to find it),
+> `READONLY_DB_URL`, `PYTHON_PATH` (path to this project's venv Python).
 
 ---
 
@@ -230,7 +232,20 @@ python main.py --step schema          # Apply DDL only
 python main.py --step load            # Load into PostgreSQL
 python main.py --step load --reload   # Truncate and reload
 python main.py --step create-user     # Create olist_reader role
+python main.py --step embed           # Build the ChromaDB knowledge base
 ```
+
+---
+
+## Adding a Skill
+
+Skills are self-contained folders — to add one:
+
+1. Create `openclaw/skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, `metadata.openclaw`) and a body that documents when to use it and the exact command to run.
+2. Put the executable backend in `openclaw/skills/<name>/scripts/`.
+3. Reference the command in `system_prompt.txt` (so a small model invokes it reliably), then restart the gateway.
+
+Backends that produce files for Telegram write them to `<OPENCLAW_HOME>/.openclaw/media/outbound/`, which is OpenClaw's allowlisted outbound-media directory.
 
 ---
 

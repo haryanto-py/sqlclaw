@@ -25,6 +25,21 @@ openclaw/.openclaw/
 /.openclaw/
 *.bak
 openclaw/openclaw.json.bak*
+openclaw/openclaw.json.last-good
+
+# OpenClaw auto-generated workspace/runtime files (regenerated on startup)
+openclaw/AGENTS.md
+openclaw/HEARTBEAT.md
+openclaw/IDENTITY.md
+openclaw/TOOLS.md
+openclaw/USER.md
+openclaw/media/
+
+# OpenClaw config schema dump (machine-generated)
+schema.json
+
+# Runtime logs
+/logs/
 
 # Logs
 openclaw/logs/*.log

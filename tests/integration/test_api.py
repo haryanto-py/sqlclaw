@@ -64,20 +64,20 @@ MOCK_TABLES = [
 
 MOCK_SKILLS = [
     {
-        "name": "query_validator",
+        "name": "postgresql",
         "type": "local",
-        "source": "./skills/query_validator.js",
+        "source": "./skills/postgresql",
         "status": "active",
-        "description": "Validates SQL queries.",
+        "description": "Runs read-only SQL against PostgreSQL.",
         "config": {},
     },
     {
-        "name": "postgresql",
-        "type": "clawhub",
-        "source": "clawhub:postgresql",
+        "name": "send_chart",
+        "type": "local",
+        "source": "./skills/send_chart",
         "status": "active",
-        "description": "PostgreSQL skill.",
-        "config": {"connectionString": "${READONLY_DB_URL}"},
+        "description": "Renders charts as PNG images.",
+        "config": {},
     },
 ]
 

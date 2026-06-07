@@ -1,5 +1,6 @@
 """
-Parses the queries.log file written by openclaw/skills/query_validator.js.
+Parses the queries.log audit file written by the postgresql skill's query
+validator (openclaw/skills/postgresql/scripts/query.py).
 
 Log line format:
   [2026-04-12T08:23:14Z] STATUS: ALLOWED | QUERY: SELECT ... | REASON: ...

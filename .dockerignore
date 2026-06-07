@@ -11,8 +11,17 @@ __pycache__/
 # Data files (mounted as volumes at runtime — not baked into the image)
 data/
 data_cleaned/
+chroma_db/
 openclaw/charts/
+openclaw/exports/
+openclaw/media/
 openclaw/logs/
+
+# OpenClaw project-local state (created at runtime / mounted as a volume)
+.openclaw/
+openclaw/.openclaw/
+openclaw/openclaw.json.bak*
+openclaw/openclaw.json.last-good
 
 # Secrets
 .env

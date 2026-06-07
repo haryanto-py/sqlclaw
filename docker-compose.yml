@@ -66,25 +66,35 @@ services:
         postgresql://olist_reader:${READONLY_DB_PASSWORD:-change_me_before_use}@postgres:5432/olist_ecommerce
     ports:
       - "${SKILLHUB_PORT:-8000}:8000"
+    volumes:
+      - openclaw_logs:/app/openclaw/logs:ro    # read the agent's query audit log
     depends_on:
       postgres:
         condition: service_healthy
 
 
   # ── OpenClaw agent ────────────────────────────────────────────────────────
-  # The Telegram-connected AI agent. Requires ANTHROPIC_API_KEY and
-  # TELEGRAM_BOT_TOKEN to be set in .env before starting.
+  # The Telegram-connected AI agent. Requires OPENAI_API_KEY (or your chosen
+  # provider), TELEGRAM_BOT_TOKEN, and TELEGRAM_ALLOWED_USER_ID in .env.
+  #
+  # Build the knowledge base once (host) before first run so RAG works:
+  #   python main.py --step embed
   #
   # Start with:
-  #   docker compose --profile agent up openclaw
+  #   docker compose --profile agent up -d openclaw
   openclaw:
-    build: ./openclaw
+    build:
+      context: .
+      target: agent
     restart: unless-stopped
     env_file: .env
     environment:
       READONLY_DB_URL: >-
         postgresql://olist_reader:${READONLY_DB_PASSWORD:-change_me_before_use}@postgres:5432/olist_ecommerce
-      PYTHON_PATH: /usr/local/bin/python3
+    volumes:
+      - ./chroma_db:/app/chroma_db           # knowledge_search RAG store (built by --step embed; RW for ChromaDB's SQLite)
+      - openclaw_logs:/app/openclaw/logs     # share the query audit log with skillhub
+      - openclaw_state:/app/.openclaw        # persist sessions + outbound media across restarts
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,4 +103,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  openclaw_logs:
+    driver: local
+  openclaw_state:
     driver: local

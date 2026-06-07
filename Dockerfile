@@ -54,3 +54,34 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/dashboard/stats')"
 
 CMD ["uv", "run", "uvicorn", "skillhub.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+# ── Stage 5: OpenClaw agent (Telegram) ─────────────────────────
+# Reuses python-base (venv + all skill dependencies already installed by uv)
+# and adds Node.js + the OpenClaw CLI so the agent can run its Python skills.
+FROM python-base AS agent
+
+# Node.js 20 (NodeSource) — required by the OpenClaw CLI
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin the OpenClaw CLI to the version the project was built/tested against
+RUN npm install -g openclaw@2026.5.7
+
+# Put the project venv first on PATH so the skills' bare `python ...` commands
+# resolve to this project's interpreter + dependencies (matches start.ps1).
+ENV PATH="/app/.venv/bin:${PATH}"
+
+# Keep OpenClaw config + state scoped to this project (mirrors start.ps1):
+#   OPENCLAW_HOME        -> state in /app/.openclaw (sessions, outbound media)
+#   OPENCLAW_CONFIG_PATH -> the repo-tracked config
+ENV OPENCLAW_HOME="/app" \
+    OPENCLAW_CONFIG_PATH="/app/openclaw/openclaw.json"
+
+# The agent workspace is openclaw/ — skill script paths are relative to it.
+WORKDIR /app/openclaw
+
+CMD ["openclaw", "gateway", "run"]

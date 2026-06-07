@@ -202,20 +202,34 @@ uvicorn skillhub.backend.main:app --reload  # dashboard
 
 ### 2. The Telegram agent
 
-The agent is launched locally so its config and state stay **scoped to this project** (it never touches a global `~/.openclaw` config or clashes with other OpenClaw projects):
+The agent's config and state stay **scoped to this project** — it never touches a
+global `~/.openclaw` config or clashes with other OpenClaw projects.
+
+**Docker (any OS):**
+
+```bash
+python main.py --step embed                       # build the RAG knowledge base (once)
+docker compose --profile agent up -d --build openclaw
+```
+
+The `agent` image bundles the OpenClaw CLI, the project venv, and all the
+skill dependencies; it shares the query audit log with the dashboard and
+persists sessions in a volume.
+
+**Local (Windows):**
 
 ```bash
 npm install -g openclaw     # install the OpenClaw CLI (one time)
-
-# Windows — start.ps1 loads .env and sets the project-local config + state dir,
-# then runs the gateway:
-./start.ps1
+./start.ps1                  # loads .env, scopes config to this project, runs the gateway
 ```
 
-`start.ps1` sets `OPENCLAW_HOME` (project root → state in `./.openclaw/`) and
-`OPENCLAW_CONFIG_PATH` (the repo's `openclaw/openclaw.json`), then runs
-`openclaw gateway run`. Keep the terminal open — the bot only responds while the
-gateway is running. Message your bot and you're live.
+`start.ps1` sets `OPENCLAW_HOME` (project root → state in `./.openclaw/`),
+`OPENCLAW_CONFIG_PATH` (the repo's `openclaw/openclaw.json`), and puts the venv
+on `PATH`, then runs `openclaw gateway run`. Keep the terminal open — the bot
+only responds while the gateway is running.
+
+> Run **only one** gateway at a time per bot token (Docker *or* local) — two
+> pollers on the same Telegram bot will conflict. Then message your bot.
 
 > Required env: `OPENAI_API_KEY` (or your chosen provider), `TELEGRAM_BOT_TOKEN`,
 > `TELEGRAM_ALLOWED_USER_ID` (your numeric Telegram user id — DM [@userinfobot](https://t.me/userinfobot) to find it),

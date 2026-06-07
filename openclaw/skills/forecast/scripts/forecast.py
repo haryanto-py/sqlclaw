@@ -10,6 +10,7 @@ Prints JSON: {"success":true,"chart_path":"...","forecast_results":[...]}.
 
 import argparse
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -26,9 +27,10 @@ from sklearn.linear_model import LinearRegression
 
 sns.set_theme(style="whitegrid", palette="muted")
 
-# skills/forecast/scripts/forecast.py -> parents[3] = openclaw/
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "charts"
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Write to OpenClaw's allowed outbound-media dir: <state>/media/outbound
+_HOME = os.environ.get("OPENCLAW_HOME") or str(Path.home())
+OUTPUT_DIR = Path(_HOME) / ".openclaw" / "media" / "outbound"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def forecast_and_plot(data, periods, title, ylabel):

@@ -11,6 +11,7 @@ Types: bar | line | pie | heatmap (heatmap data needs row/col/value keys).
 
 import argparse
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -24,9 +25,11 @@ import seaborn as sns
 
 sns.set_theme(style="whitegrid", palette="muted")
 
-# skills/send_chart/scripts/chart.py -> parents[3] = openclaw/
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "charts"
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Write where OpenClaw's message tool is allowed to read outbound media:
+# <state>/media/outbound, where state = <OPENCLAW_HOME or ~>/.openclaw
+_HOME = os.environ.get("OPENCLAW_HOME") or str(Path.home())
+OUTPUT_DIR = Path(_HOME) / ".openclaw" / "media" / "outbound"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _bar_chart(data, title, xlabel, ylabel):

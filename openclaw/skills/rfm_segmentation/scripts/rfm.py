@@ -26,9 +26,10 @@ import seaborn as sns
 
 sns.set_theme(style="whitegrid", palette="muted")
 
-# skills/rfm_segmentation/scripts/rfm.py -> parents[3] = openclaw/
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "charts"
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Write to OpenClaw's allowed outbound-media dir: <state>/media/outbound
+_HOME = os.environ.get("OPENCLAW_HOME") or str(Path.home())
+OUTPUT_DIR = Path(_HOME) / ".openclaw" / "media" / "outbound"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_rfm_data() -> pd.DataFrame:

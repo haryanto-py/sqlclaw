@@ -11,15 +11,17 @@ Prints JSON: {"success":true,"file_path":"...","format":"pdf"}.
 import argparse
 import csv
 import json
+import os
 import sys
 import uuid
 from pathlib import Path
 
 from fpdf import FPDF
 
-# skills/export_report/scripts/export.py -> parents[3] = openclaw/
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "exports"
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Write to OpenClaw's allowed outbound-media dir: <state>/media/outbound
+_HOME = os.environ.get("OPENCLAW_HOME") or str(Path.home())
+OUTPUT_DIR = Path(_HOME) / ".openclaw" / "media" / "outbound"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _safe_name(title: str) -> str:

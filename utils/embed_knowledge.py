@@ -18,12 +18,12 @@ import textwrap
 from pathlib import Path
 
 import chromadb
-import cohere
+from sentence_transformers import SentenceTransformer
 
 KNOWLEDGE_FILE = Path(__file__).parent.parent / "KNOWLEDGE.md"
 CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
 COLLECTION_NAME = "knowledge"
-COHERE_MODEL = "embed-english-v3.0"  # 1024-dim, free tier
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CHUNK_WORDS = 400
 OVERLAP_WORDS = 50
 
@@ -82,27 +82,19 @@ def build_chunks(knowledge_file: Path = KNOWLEDGE_FILE) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Embedding via Cohere
+# Embedding via Sentence Transformers
 # ---------------------------------------------------------------------------
 
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
-    """Call Cohere embed API and attach embeddings to each chunk."""
-    api_key = os.environ.get("COHERE_API_KEY")
-    if not api_key:
-        raise RuntimeError("COHERE_API_KEY is not set in .env")
-
-    co = cohere.Client(api_key)
+    """Call local sentence-transformers model and attach embeddings to each chunk."""
+    model = SentenceTransformer(EMBEDDING_MODEL)
     texts = [c["content"] for c in chunks]
 
-    print(f"  Embedding {len(texts)} chunks via Cohere ({COHERE_MODEL}) ...")
-    response = co.embed(
-        texts=texts,
-        model=COHERE_MODEL,
-        input_type="search_document",
-    )
+    print(f"  Embedding {len(texts)} chunks via local model ({EMBEDDING_MODEL}) ...")
+    embeddings = model.encode(texts, convert_to_numpy=True).tolist()
 
-    for chunk, embedding in zip(chunks, response.embeddings):
+    for chunk, embedding in zip(chunks, embeddings):
         chunk["embedding"] = embedding
 
     return chunks

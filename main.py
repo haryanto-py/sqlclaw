@@ -185,11 +185,11 @@ def main() -> None:
             print("\n[Step 4/4] Loading into PostgreSQL ...")
             cmd_load(cleaned, engine, reload=args.reload)
 
-        if args.step == "create-user":
+        if args.step in ("all", "create-user"):
             print("\n[Setup] Creating read-only database user ...")
             cmd_create_user(engine)
 
-        if args.step == "embed":
+        if args.step in ("all", "embed"):
             print("\n[RAG] Embedding KNOWLEDGE.md into ChromaDB ...")
             cmd_embed(reload=args.reload)
 

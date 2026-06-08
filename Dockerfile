@@ -34,9 +34,6 @@ RUN uv sync --frozen --no-dev
 # Copy application source
 COPY . .
 
-# Inject the pre-built React frontend so FastAPI can serve it
-COPY --from=frontend-builder /frontend/dist ./skillhub/frontend/dist
-
 
 # ── Stage 3: ETL (one-shot pipeline runner) ────────────────────
 FROM python-base AS etl
@@ -47,6 +44,9 @@ CMD ["uv", "run", "python", "main.py"]
 
 # ── Stage 4: Skillhub API server ──────────────────────────────
 FROM python-base AS skillhub
+
+# Inject the pre-built React frontend so FastAPI can serve it
+COPY --from=frontend-builder /frontend/dist ./skillhub/frontend/dist
 
 EXPOSE 8000
 
@@ -61,10 +61,10 @@ CMD ["uv", "run", "uvicorn", "skillhub.backend.main:app", "--host", "0.0.0.0", "
 # and adds Node.js + the OpenClaw CLI so the agent can run its Python skills.
 FROM python-base AS agent
 
-# Node.js 20 (NodeSource) — required by the OpenClaw CLI
+# Node.js 22 (NodeSource) — the OpenClaw CLI requires Node >= 22.12
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 

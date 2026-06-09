@@ -71,9 +71,15 @@ RUN apt-get update \
 # Pin the OpenClaw CLI to the version the project was built/tested against
 RUN npm install -g openclaw@2026.5.7
 
-# Put the project venv first on PATH so the skills' bare `python ...` commands
-# resolve to this project's interpreter + dependencies (matches start.ps1).
+# Put the project venv first on PATH (matches start.ps1)...
 ENV PATH="/app/.venv/bin:${PATH}"
+
+# ...but OpenClaw's exec tool resolves `python` to /usr/local/bin/python (the
+# system interpreter, which lacks the project deps). Point that path at the
+# venv interpreter so the skills' `python ...` commands get psycopg2,
+# matplotlib, sentence-transformers, etc.
+RUN printf '#!/bin/sh\nexec /app/.venv/bin/python "$@"\n' > /usr/local/bin/python \
+    && chmod +x /usr/local/bin/python
 
 # Keep OpenClaw config + state scoped to this project (mirrors start.ps1):
 #   OPENCLAW_HOME        -> state in /app/.openclaw (sessions, outbound media)

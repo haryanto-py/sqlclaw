@@ -111,7 +111,7 @@ Two independent layers, either of which alone would prevent writes:
 - **Multi-stage Dockerfile** and **Docker Compose** (PostgreSQL, one-shot ETL, always-on Skillhub).
 - **GitHub Actions CI** — lint (ruff) → unit tests → integration tests → Docker build.
 - **pytest** suite covering the ETL cleaning logic, the dashboard API, and the skills (SQL safety validator, chart/export backends).
-- **End-to-end skill benchmark** — a 10-question suite exercising every skill plus the security layer, with results and findings in **[BENCHMARK.md](BENCHMARK.md)**.
+- **End-to-end test results** — a 39-prompt battery across all six skills plus the security layer, grouped by category, with the actual chart outputs and findings in **[TEST_RESULTS.md](TEST_RESULTS.md)**.
 
 ---
 
